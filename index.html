@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8 />
+    <title>Four Types of Power Plants</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+    <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Overpass' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Merriweather' rel='stylesheet' type='text/css'>
+
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #eaf8e2;
+            font-family: Lato, sans-serif;
+            color: #0D0000;
+        }
+
+        header {
+            padding: 6px 10%;
+        }
+
+        h1 {
+            display: inline-block;
+            margin-right: 20px;
+            font-family: Overpass, sans-serif;
+            color: #001323;
+        }
+
+        h2 {
+            display: inline-block;
+            font-family: Overpass, sans-serif;
+            color: #001323;
+        }
+
+        #map {
+            width: 80%;
+            height: 540px;
+            margin: 10px auto;
+        }
+
+        footer {
+            padding: 6px 10%;
+            width: 80%;
+        }
+
+        p {
+            font-size: 1em;
+            font-family: Merriweather;
+            color: #001323;
+        }
+        .leaflet-tooltip p {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Four Types of Power Plant</h1>
+        <h2>Hydroelectric, Wind, Solar, and Petroleum</h2>
+    </header>
+
+    <div id='map'></div>
+
+    <footer>
+        <p>Created by <a href="https://github.com/chrispappas007">Christina Pappas</a></p>
+        <p>This map depicts four types of electrical power plants: Hydroelectric, Wind, Solar, and Petroleum. Data on the plant location, type, and output are drawn from <a href="https://www.eia.gov/">U.S. Energy Information Adminstration</a>.</p>
+    </footer>
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="data/power-plants.js"></script>
+    <script>
+        var map = L.map('map', {
+            center: [36, -94],
+            zoom: 4,
+        });
+
+        var tiles = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        tiles.addTo(map);
+
+        var commonStyles = {
+            weight: 1,
+            stroke: 1,
+            fillOpacity: .8
+        } //common style for all markers
+
+        // from line 94 to 139 I attempted to create an array to make the code less klunky - it has not ended well. See lines 141 to 271 for klunky but working code
+        var plantTypes = [ //create an array of the plant types
+            {
+                fuel_source: "Hydro",
+                color: "#0099ff"
+            },
+            {
+                fuel_source: "Wind",
+                color: "#66ffcc"
+            },
+            {
+                fuel_source: "Solar",
+                color: "#f1a832"
+            },
+            {
+                fuel_source: "Petroleum",
+                color: "##a832f1"
+            }
+        ];
+
+        //loop through array with forEach method
+        plantTypes.forEach(function(plantType, i) {
+            // console.log(plantType); // Object {fuel_source: "Hydro", color: "#0099ff", fillColor: "#0099ff"}
+
+            // create new L.geoJson object for each type
+            L.geoJson(plants, { // need to ref our data source here
+                pointToLayer: function(feature, latlng) { //place on map at lat lng
+                    return L.circleMarker(latlng, commonStyles); //create a circle marker based on the below properties
+                },
+                filter: function(feature) {
+                    // source name from our data array
+                    var source = plantType.fuel_source;
+                    // use this to access if there is a source in the current plant
+                    if (feature.properties.fuel_source[source]) {
+                        return feature;
+                    }
+                },
+                style: function(feature) {
+                    return {
+                        color: plantType.color,
+                        fillColor: plants.fillColor,
+                        radius: getRadius(feature.properties.fuel_source[plantType.fuel_source])
+                    }
+                },
+                onEachFeature: function(feature, layer) {
+                    layer.on('mouseover', function() {
+                        layer.setStyle({
+                            fillColor: 'red'
+                        });
+                    }).on('mouseout', function() {  // chain method
+                        layer.setStyle({
+                            fillColor: '#0099ff'
+                        });
+                    });
+
+                    // construct tooltip info for all layers
+                    var tooltip = "<p><b>" + feature.properties.plant_name + "</b></p>" +
+                        "<p>" + feature.properties.capacity_mw + " MW</p>";
+
+                    // loop through layer fuel sources
+                    for (var source in feature.properties.fuel_source){
+                        // add to tooltip
+                        tooltip += "<p><b>" + source +"</b>" + feature.properties.fuel_source[source] + " MW</p>";
+                    }
+
+                    // bind it to the layer
+                    layer.bindTooltip(tooltip);
+                }
+            }).addTo(map);
+
+        }); //add it to the map
+
+        function getRadius(area) { //function to generate the circle marker based on the area powered
+            var radius = Math.sqrt(area / Math.PI);
+            return radius * .6;
+        };
+
+        plants.features.sort(function(a, b) { //draw the markers with largest on the bottom
+            return b.properties.capacity_mw - a.properties.capacity_mw;
+        });
+    </script>
+
+</body>
+
+</html>
