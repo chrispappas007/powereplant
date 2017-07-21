@@ -1,2 +1,2 @@
-# powereplant
+# powerplant
 power plant map repo
